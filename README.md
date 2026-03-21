@@ -234,9 +234,9 @@ See [`infra/terraform/README.md`](infra/terraform/README.md) for AWS deployment 
 
 | Section | Time |
 |---------|------|
-| Part 1 — System Design | ~2 hrs |
-| Part 2 — Core Implementation | ~4 hrs |
-| Part 3 — Infrastructure as Code | ~2 hrs |
+| Part 1 — System Design | ~2 hrs (creating the design and comparing it generated design) |
+| Part 2 — Core Implementation | ~4 hrs (mainly reviewing the generated code) |
+| Part 3 — Infrastructure as Code | ~2 hrs (mainly reviewing the generated code) |
 | Documentation + polish | ~1 hr |
 | **Total** | **~9 hrs** |
 
