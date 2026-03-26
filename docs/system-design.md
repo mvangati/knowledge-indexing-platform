@@ -29,33 +29,47 @@ The platform is a cloud-native, multi-tenant knowledge indexing service that ing
            │  Service     │ │   Service    │  │  Metrics     │
            │  (ECS)       │ │   (ECS)      │  │  Service     │
            └──────┬───────┘ └──────┬───────┘  └──────┬───────┘
-                  │                │                  │
-                  ▼                ▼                  │
-          ┌───────────────────────────────┐          │
-          │         SQS Queue             │          │
-          │  (async ingestion pipeline)   │          │
-          └───────────────┬───────────────┘          │
-                          ▼                          │
-          ┌───────────────────────────────┐          │
-          │     Document Processor        │          │
-          │  • Chunking   • Embedding     │          │
-          │  • Metadata extraction        │          │
-          └───────────────┬───────────────┘          │
-                          │                          │
-         ┌────────────────┼──────────────────────────┘
+                  │                │ (1) check cache  │
+                  │                ▼                  │
+                  │       ┌──────────────────┐        │
+                  │       │   ElastiCache    │        │
+                  │       │   Redis          │        │
+                  │       │   (search cache) │        │
+                  │       └────────┬─────────┘        │
+                  │                │ (2) cache miss   │
+                  │                ▼                  │
+                  │       ┌──────────────┐            │
+                  │       │  OpenSearch  │◄───────────┘
+                  │       │  (vector +   │
+                  │       │  FTS index)  │
+                  │       └──────────────┘
+                  │
+                  ▼
+          ┌───────────────────────────────┐
+          │         SQS Queue             │
+          │  (async ingestion only)       │
+          └───────────────┬───────────────┘
+                          ▼
+          ┌───────────────────────────────┐
+          │     Document Processor        │
+          │  • Chunking   • Embedding     │
+          │  • Metadata extraction        │
+          └───────────────┬───────────────┘
+                          │
+         ┌────────────────┼────────────────┐
          ▼                ▼                ▼
 ┌──────────────┐ ┌──────────────┐ ┌──────────────────┐
-│  Aurora PG   │ │  OpenSearch  │ │   ElastiCache    │
-│  (metadata   │ │  (vector +   │ │   Redis          │
-│   + audit)   │ │  FTS index)  │ │   (search cache) │
+│  Aurora PG   │ │  OpenSearch  │ │       S3         │
+│  (metadata   │ │  (vector +   │ │  (raw doc cold   │
+│   + audit)   │ │  FTS index)  │ │   storage)       │
 └──────────────┘ └──────────────┘ └──────────────────┘
-         │
-         ▼
-┌──────────────────┐
-│   S3 (raw doc    │
-│   cold storage)  │
-└──────────────────┘
 ```
+
+> **Note:** SQS is used exclusively by the Ingestion Service for async document
+> processing (chunking, embedding generation). The Search Service connects
+> directly to ElastiCache Redis (cache check first) and OpenSearch (on cache
+> miss). This keeps search latency low — a queue would add hundreds of
+> milliseconds and unnecessary complexity to a synchronous read path.
 
 ### Data Flow — Document Ingestion
 
